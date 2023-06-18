@@ -135,6 +135,29 @@ always_comb begin : IMG_IN_COMB
 	else begin
 		image_cnt_nxt = 0;
 	end
+	//padding
+	if(pad_mode_reg) begin
+		for(int i = 0; i < image_size_reg; i = i+1) begin
+			image_nxt[1][i+2] = image_nxt[2][i+2];
+			image_nxt[image_size_reg+2][i+2] = image_nxt[image_size_reg+1][i+2];
+			image_nxt[i+2][1] = image_nxt[i+2][2];
+			image_nxt[i+2][image_size_reg+2] = image_nxt[i+2][image_size_reg+1];
+		end
+	end
+	for(int i = 0; i < image_size_reg; i = i+1) begin
+			image_nxt[0][i+2] = image_nxt[1][i+2];
+			image_nxt[image_size_reg+3][i+2] = image_nxt[image_size_reg+2][i+2];
+			image_nxt[i+2][0] = image_nxt[i+2][1];
+			image_nxt[i+2][image_size_reg+3] = image_nxt[i+2][image_size_reg+2];
+	end
+	for(int i = 0; i < 2; i = i+1) begin
+		for(int j = 0; j < 2; j = j+1) begin
+			image_nxt[i][j] = image_nxt[2][1];
+			image_nxt[i][image_size_reg+2+j] = image_nxt[2][image_size_reg+2];
+			image_nxt[image_size_reg+2+i][j] = image_nxt[image_size_reg+2][2];
+			image_nxt[image_size_reg+2+i][image_size_reg+2+j] = image_nxt[image_size_reg+1][image_size_reg+2];
+		end
+	end
 end
 
 logic [15:0] conv_result;
