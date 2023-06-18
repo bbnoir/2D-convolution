@@ -194,9 +194,9 @@ logic [2:0] conv_row_nxt, conv_col_nxt;
 logic [5:0] cal_start_num;
 always_comb begin
 	if(filter_size_num == 5) begin
-		cal_start_num = 2*image_size_reg + 2 + 1;
+		cal_start_num = 2*image_size_reg + 2 + 7;
 	end else begin
-		cal_start_num = image_size_reg + 1 + 1;
+		cal_start_num = image_size_reg + 1 + 7;
 	end
 end
 always_comb begin
@@ -209,9 +209,20 @@ end
 assign conv_row_nxt = conv_idx / image_size_reg;
 assign conv_col_nxt = conv_idx % image_size_reg;
 
+logic signed [7:0] mul_opr[0:24];
+logic signed [7:0] mul_opr_nxt[0:24];
+
+always_comb begin
+	for(int i = 0; i < 25; i = i+1) begin
+		// mul_opr_nxt[i] = (cs == IDLE)? 0 : image[conv_row+i/5][conv_col+i%5];
+		mul_opr_nxt[i] = image[conv_row+i/5][conv_col+i%5];
+	end
+end
+
 always_comb begin
 	for(integer i = 0; i < 25; i = i+1) begin
-		mul_result_nxt[i] = filter[i] * image[conv_row+i/5][conv_col+i%5];
+		// mul_result_nxt[i] = filter[i] * image[conv_row+i/5][conv_col+i%5];
+		mul_result_nxt[i] = filter[i] * mul_opr[i];
 	end
 end
 
@@ -260,14 +271,14 @@ always_comb begin : OUT_COMB
 	else begin
 		conv_result = 0;
 	end
-	if(image_cnt > cal_start_num+5) begin
+	if(image_cnt > cal_start_num) begin
 		conv_done = 1;
 	end
 	if(conv_done) begin
 		out_valid_nxt = 1;
 		out_data_nxt = conv_result;
 	end
-	if(image_cnt-cal_start_num == image_size_reg*image_size_reg+5) begin
+	if(image_cnt-cal_start_num == image_size_reg*image_size_reg) begin
 		out_done = 1;
 	end
 end
@@ -280,6 +291,7 @@ always_ff @( posedge clk, negedge rst_n ) begin : REG_FF
 		act_mode_reg <= 0;
 		for(int i = 0; i < 25; i = i+1) begin
 			filter[i] <= 0;
+			mul_opr[i] <= 0;
 			mul_result[i] <= 0;
 		end
 		for(int i = 0; i < 12; i = i+1) begin
@@ -306,14 +318,15 @@ always_ff @( posedge clk, negedge rst_n ) begin : REG_FF
 		add_result_5 <= 0;
 		conv_row <= 0;
 		conv_col <= 0;
-	end
-	else begin
+		
+	end else begin
 		filter_size_reg <= filter_size_nxt;
 		image_size_reg <= image_size_nxt;
 		pad_mode_reg <= pad_mode_nxt;
 		act_mode_reg <= act_mode_nxt;
 		for(int i = 0; i < 25; i = i+1) begin
 			filter[i] <= filter_nxt[i];
+			mul_opr[i] <= mul_opr_nxt[i];
 			mul_result[i] <= mul_result_nxt[i];
 		end
 		for(int i = 0; i < 12; i = i+1) begin
