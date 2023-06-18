@@ -120,6 +120,12 @@ always_comb begin : FILTER_COMB
 	end
 end
 
+logic first_row, first_col, last_row, last_col;
+assign first_row = (image_cnt/image_size_reg == 0);
+assign first_col = (image_cnt%image_size_reg == 0);
+assign last_row = (image_cnt/image_size_reg == image_size_reg-1);
+assign last_col = (image_cnt%image_size_reg == image_size_reg-1);
+
 always_comb begin : IMG_IN_COMB
 	for(int i = 0; i < 12; i = i+1) begin
 		for(int j = 0; j < 12; j = j+1) begin
@@ -128,6 +134,48 @@ always_comb begin : IMG_IN_COMB
 	end
 	if(image_valid) begin
 		image_nxt[2+image_cnt/image_size_reg][2+image_cnt%image_size_reg] = in_data;
+		//padding
+		if(pad_mode_reg) begin
+			if(first_row) begin
+				image_nxt[0][2+image_cnt%image_size_reg] = in_data;
+				image_nxt[1][2+image_cnt%image_size_reg] = in_data;
+			end else if(last_row) begin
+				image_nxt[image_size_reg+2][2+image_cnt%image_size_reg] = in_data;
+				image_nxt[image_size_reg+3][2+image_cnt%image_size_reg] = in_data;
+			end
+			if(first_col) begin
+				image_nxt[2+image_cnt/image_size_reg][0] = in_data;
+				image_nxt[2+image_cnt/image_size_reg][1] = in_data;
+			end else if(last_col) begin
+				image_nxt[2+image_cnt/image_size_reg][image_size_reg+2] = in_data;
+				image_nxt[2+image_cnt/image_size_reg][image_size_reg+3] = in_data;
+			end
+			if(first_row && first_col) begin
+				for(int i = 0; i < 2; i = i+1) begin
+					for(int j = 0; j < 2; j = j+1) begin
+						image_nxt[i][j] = in_data;
+					end
+				end
+			end else if (first_row && last_col) begin
+				for(int i = 0; i < 2; i = i+1) begin
+					for(int j = 2; j < 4; j = j+1) begin
+						image_nxt[i][image_size_reg+j] = in_data;
+					end
+				end
+			end else if (last_row && first_col) begin
+				for(int i = 2; i < 4; i = i+1) begin
+					for(int j = 0; j < 2; j = j+1) begin
+						image_nxt[image_size_reg+i][j] = in_data;
+					end
+				end
+			end else if (last_row && last_col) begin
+				for(int i = 2; i < 4; i = i+1) begin
+					for(int j = 2; j < 4; j = j+1) begin
+						image_nxt[image_size_reg+i][image_size_reg+j] = in_data;
+					end
+				end
+			end
+		end
 	end
 	if(ns == IMG_IN) begin
 		image_cnt_nxt = image_cnt + 1;
@@ -136,28 +184,6 @@ always_comb begin : IMG_IN_COMB
 		image_cnt_nxt = 0;
 	end
 	//padding
-	if(pad_mode_reg) begin
-		for(int i = 0; i < image_size_reg; i = i+1) begin
-			image_nxt[1][i+2] = image_nxt[2][i+2];
-			image_nxt[image_size_reg+2][i+2] = image_nxt[image_size_reg+1][i+2];
-			image_nxt[i+2][1] = image_nxt[i+2][2];
-			image_nxt[i+2][image_size_reg+2] = image_nxt[i+2][image_size_reg+1];
-		end
-	end
-	for(int i = 0; i < image_size_reg; i = i+1) begin
-			image_nxt[0][i+2] = image_nxt[1][i+2];
-			image_nxt[image_size_reg+3][i+2] = image_nxt[image_size_reg+2][i+2];
-			image_nxt[i+2][0] = image_nxt[i+2][1];
-			image_nxt[i+2][image_size_reg+3] = image_nxt[i+2][image_size_reg+2];
-	end
-	for(int i = 0; i < 2; i = i+1) begin
-		for(int j = 0; j < 2; j = j+1) begin
-			image_nxt[i][j] = image_nxt[2][1];
-			image_nxt[i][image_size_reg+2+j] = image_nxt[2][image_size_reg+2];
-			image_nxt[image_size_reg+2+i][j] = image_nxt[image_size_reg+2][2];
-			image_nxt[image_size_reg+2+i][image_size_reg+2+j] = image_nxt[image_size_reg+1][image_size_reg+2];
-		end
-	end
 end
 
 logic [15:0] conv_result;
