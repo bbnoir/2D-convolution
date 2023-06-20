@@ -43,14 +43,6 @@ typedef enum logic [1:0] {IDLE, FILT_IN, IMG_IN} STATE;
 STATE cs, ns;
 logic signed [15:0] mul_result [0:24];
 logic signed [15:0] mul_result_nxt [0:24];
-logic signed [16:0] add_result_1 [0:12];
-logic signed [16:0] add_result_1_nxt [0:12];
-logic signed [17:0] add_result_2 [0:6];
-logic signed [17:0] add_result_2_nxt [0:6];
-logic signed [18:0] add_result_3 [0:3];
-logic signed [18:0] add_result_3_nxt [0:3];
-logic signed [19:0] add_result_4 [0:1];
-logic signed [19:0] add_result_4_nxt [0:1];
 logic signed [20:0] add_result_5;
 logic signed [20:0] add_result_5_nxt;
 
@@ -194,9 +186,9 @@ logic [2:0] conv_row_nxt, conv_col_nxt;
 logic [5:0] cal_start_num;
 always_comb begin
 	if(filter_size_num == 5) begin
-		cal_start_num = 2*image_size_reg + 2 + 7;
+		cal_start_num = 2*image_size_reg + 2 + 3;
 	end else begin
-		cal_start_num = image_size_reg + 1 + 7;
+		cal_start_num = image_size_reg + 1 + 3;
 	end
 end
 always_comb begin
@@ -227,21 +219,10 @@ always_comb begin
 end
 
 always_comb begin
-	for(int i = 0; i < 12; i = i+1) begin
-		add_result_1_nxt[i] = mul_result[2*i] + mul_result[2*i+1];
+	add_result_5_nxt = mul_result[0];
+	for(int i = 1; i < 25; i = i+1) begin
+		add_result_5_nxt = add_result_5_nxt + mul_result[i];
 	end
-	add_result_1_nxt[12] = mul_result[24];
-	for(int i = 0; i < 6; i = i+1) begin
-		add_result_2_nxt[i] = add_result_1[2*i] + add_result_1[2*i+1];
-	end
-	add_result_2_nxt[6] = add_result_1[12];
-	for(int i = 0; i < 3; i = i+1) begin
-		add_result_3_nxt[i] = add_result_2[2*i] + add_result_2[2*i+1];
-	end
-	add_result_3_nxt[3] = add_result_2[6];
-	add_result_4_nxt[0] = add_result_3[0] + add_result_3[1];
-	add_result_4_nxt[1] = add_result_3[2] + add_result_3[3];
-	add_result_5_nxt = add_result_4[0] + add_result_4[1];
 end
 
 
@@ -303,18 +284,6 @@ always_ff @( posedge clk, negedge rst_n ) begin : REG_FF
 		image_cnt <= 0;
 		out_valid <= 0;
 		out_data <= 0;
-		for(int i = 0; i < 13; i = i+1) begin
-			add_result_1[i] <= 0;
-		end
-		for(int i = 0; i < 7; i = i+1) begin
-			add_result_2[i] <= 0;
-		end
-		for(int i = 0; i < 4; i = i+1) begin
-			add_result_3[i] <= 0;
-		end
-		for(int i = 0; i < 2; i = i+1) begin
-			add_result_4[i] <= 0;
-		end
 		add_result_5 <= 0;
 		conv_row <= 0;
 		conv_col <= 0;
@@ -338,18 +307,6 @@ always_ff @( posedge clk, negedge rst_n ) begin : REG_FF
 		image_cnt <= image_cnt_nxt;
 		out_valid <= out_valid_nxt;
 		out_data <= out_data_nxt;
-		for(int i = 0; i < 13; i = i+1) begin
-			add_result_1[i] <= add_result_1_nxt[i];
-		end
-		for(int i = 0; i < 7; i = i+1) begin
-			add_result_2[i] <= add_result_2_nxt[i];
-		end
-		for(int i = 0; i < 4; i = i+1) begin
-			add_result_3[i] <= add_result_3_nxt[i];
-		end
-		for(int i = 0; i < 2; i = i+1) begin
-			add_result_4[i] <= add_result_4_nxt[i];
-		end
 		add_result_5 <= add_result_5_nxt;
 		conv_row <= conv_row_nxt;
 		conv_col <= conv_col_nxt;
