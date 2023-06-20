@@ -159,6 +159,7 @@ logic signed [7:0] mul_opr_nxt[0:24];
 logic [4:0] n;
 assign n = image_size_reg;
 
+
 always_comb begin : MUL_OPR_COMB
 	for(int i = 0; i < 25; i = i+1) begin
 		mul_opr_nxt[i] = 0;
