@@ -32,7 +32,7 @@ logic signed [7:0] image [0:36];
 logic signed [7:0] image_nxt [0:36]; //0 not used
 logic signed [15:0] out_data_nxt;
 logic out_valid_in;
-logic out_valid_buf [0:3];
+logic out_valid_buf [0:4];
 logic out_done, out_start;
 logic [3:0] row, row_nxt;
 logic [3:0] col, col_nxt;
@@ -43,6 +43,8 @@ typedef enum logic [1:0] {IDLE, FILT_IN, IMG_IN, OUT} STATE;
 STATE cs, ns;
 logic signed [15:0] mul_result [0:24];
 logic signed [15:0] mul_result_nxt [0:24];
+logic signed [17:0] add_mid [0:6];
+logic signed [17:0] add_mid_nxt [0:6];
 logic signed [20:0] add_result;
 logic signed [20:0] add_result_nxt;
 
@@ -231,10 +233,17 @@ always_comb begin : MUL_COMB
 	end
 end
 
+always_comb begin : ADD_MID_COMB
+	add_mid_nxt[0] = mul_result[0];
+	for(int i = 1; i < 7; i = i+1) begin
+		add_mid_nxt[i] = mul_result[4*i] + mul_result[4*i-1] + mul_result[4*i-2] + mul_result[4*i-3];
+	end
+end
+
 always_comb begin : ADD_COMB
-	add_result_nxt = mul_result[0];
-	for(int i = 1; i < 25; i = i+1) begin
-		add_result_nxt = add_result_nxt + mul_result[i];
+	add_result_nxt = add_mid[0];
+	for(int i = 1; i < 7; i = i+1) begin
+		add_result_nxt = add_result_nxt + add_mid[i];
 	end
 end
 
@@ -258,32 +267,26 @@ always_comb begin : RELU_COMB
 end
 
 assign out_valid_in = (cs==OUT)? 1 : 0;
-assign out_valid = out_valid_buf[3];
-assign out_data_nxt = (out_valid_buf[2])? conv_result : 0;
+assign out_valid = out_valid_buf[4];
+assign out_data_nxt = (out_valid_buf[3])? conv_result : 0;
 
 
 always_ff @( posedge clk, negedge rst_n ) begin : REG_FF
 	if ( !rst_n ) begin
-		filter_size_reg <= 0;
-		image_size_reg <= 0;
-		pad_mode_reg <= 0;
-		act_mode_reg <= 0;
-		for(int i = 0; i < 25; i = i+1) begin
-			filter[i] <= 0;
-			mul_opr[i] <= 0;
-			mul_result[i] <= 0;
-		end
-		for(int i = 0; i < 37; i = i+1) begin
-			image[i] <= 0;
-		end
-		out_data <= 0;
-		add_result <= 0;
-		row <= 0;
-		col <= 0;
-		for(int i = 0; i < 4; i = i+1) begin
+		for(int i = 0; i < 5; i = i+1) begin
 			out_valid_buf[i] <= 0;
 		end
+		out_data <= 0;
 	end else begin
+		out_valid_buf[0] <= out_valid_in;
+		for(int i = 1; i < 5; i = i+1) begin
+			out_valid_buf[i] <= out_valid_buf[i-1];
+		end
+		out_data <= out_data_nxt;
+	end
+end
+
+always_ff @( posedge clk) begin : REG_FF2
 		filter_size_reg <= filter_size_nxt;
 		image_size_reg <= image_size_nxt;
 		pad_mode_reg <= pad_mode_nxt;
@@ -296,15 +299,12 @@ always_ff @( posedge clk, negedge rst_n ) begin : REG_FF
 		for(int i = 0; i < 37; i = i+1) begin
 			image[i] <= image_nxt[i];
 		end
-		out_data <= out_data_nxt;
+		for(int i = 0; i < 7; i = i+1) begin
+			add_mid[i] <= add_mid_nxt[i];
+		end
 		add_result <= add_result_nxt;
 		row <= row_nxt;
 		col <= col_nxt;
-		out_valid_buf[0] <= out_valid_in;
-		for(int i = 1; i < 4; i = i+1) begin
-			out_valid_buf[i] <= out_valid_buf[i-1];
-		end
-	end
 end
 
 endmodule
